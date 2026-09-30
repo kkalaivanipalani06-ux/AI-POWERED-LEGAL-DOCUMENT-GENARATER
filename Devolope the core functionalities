@@ -1,0 +1,491 @@
+skill-wallet/
+├── backend/
+│   ├── server.js
+│   ├── package.json
+│   └── routes/
+│       ├── users.js
+│       ├── skills.js
+│       └── wallet.js
+├── frontend/
+│   ├── index.html
+│   ├── style.css
+│   └── app.js
+├── README.md
+└── .gitignore
+
+1. Backend — backend/server.js
+const express = require("express");
+const cors = require("cors");
+
+const userRoutes = require("./routes/users");
+const skillRoutes = require("./routes/skills");
+const walletRoutes = require("./routes/wallet");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/api/users", userRoutes);
+app.use("/api/skills", skillRoutes);
+app.use("/api/wallet", walletRoutes);
+
+app.get("/", (req, res) => {
+    res.json({
+        message: "Skill Wallet API is running"
+    });
+});
+
+const PORT = 5000;
+
+app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+});
+
+2. backend/package.json
+{
+  "name": "skill-wallet-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Skill Wallet",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
+
+3. backend/routes/users.js
+const express = require("express");
+
+const router = express.Router();
+
+let users = [
+    {
+        id: 1,
+        name: "Demo User",
+        email: "demo@example.com"
+    }
+];
+
+// Get all users
+router.get("/", (req, res) => {
+    res.json(users);
+});
+
+// Get user by ID
+router.get("/:id", (req, res) => {
+    const user = users.find(u => u.id === Number(req.params.id));
+
+    if (!user) {
+        return res.status(404).json({
+            message: "User not found"
+        });
+    }
+
+    res.json(user);
+});
+
+// Create user
+router.post("/", (req, res) => {
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+        return res.status(400).json({
+            message: "Name and email are required"
+        });
+    }
+
+    const newUser = {
+        id: users.length + 1,
+        name,
+        email
+    };
+
+    users.push(newUser);
+
+    res.status(201).json(newUser);
+});
+
+module.exports = router;
+
+4. backend/routes/skills.js
+const express = require("express");
+
+const router = express.Router();
+
+let skills = [
+    {
+        id: 1,
+        userId: 1,
+        name: "JavaScript",
+        level: "Intermediate",
+        verified: true
+    },
+    {
+        id: 2,
+        userId: 1,
+        name: "Python",
+        level: "Beginner",
+        verified: false
+    }
+];
+
+// Get all skills
+router.get("/", (req, res) => {
+    res.json(skills);
+});
+
+// Get skills of a particular user
+router.get("/user/:userId", (req, res) => {
+    const userSkills = skills.filter(
+        skill => skill.userId === Number(req.params.userId)
+    );
+
+    res.json(userSkills);
+});
+
+// Add a skill
+router.post("/", (req, res) => {
+    const { userId, name, level } = req.body;
+
+    if (!userId || !name || !level) {
+        return res.status(400).json({
+            message: "userId, name and level are required"
+        });
+    }
+
+    const newSkill = {
+        id: skills.length + 1,
+        userId: Number(userId),
+        name,
+        level,
+        verified: false
+    };
+
+    skills.push(newSkill);
+
+    res.status(201).json(newSkill);
+});
+
+// Verify a skill
+router.patch("/:id/verify", (req, res) => {
+    const skill = skills.find(
+        skill => skill.id === Number(req.params.id)
+    );
+
+    if (!skill) {
+        return res.status(404).json({
+            message: "Skill not found"
+        });
+    }
+
+    skill.verified = true;
+
+    res.json(skill);
+});
+
+module.exports = router;
+
+5. backend/routes/wallet.js
+const express = require("express");
+
+const router = express.Router();
+
+let wallets = {
+    1: {
+        userId: 1,
+        points: 100,
+        achievements: [
+            "JavaScript Beginner",
+            "Skill Wallet Member"
+        ]
+    }
+};
+
+// Get wallet
+router.get("/:userId", (req, res) => {
+    const wallet = wallets[req.params.userId];
+
+    if (!wallet) {
+        return res.status(404).json({
+            message: "Wallet not found"
+        });
+    }
+
+    res.json(wallet);
+});
+
+// Add points
+router.post("/:userId/points", (req, res) => {
+    const userId = req.params.userId;
+    const points = Number(req.body.points);
+
+    if (!wallets[userId]) {
+        wallets[userId] = {
+            userId: Number(userId),
+            points: 0,
+            achievements: []
+        };
+    }
+
+    if (!points || points < 0) {
+        return res.status(400).json({
+            message: "Valid points value is required"
+        });
+    }
+
+    wallets[userId].points += points;
+
+    res.json(wallets[userId]);
+});
+
+// Add achievement
+router.post("/:userId/achievement", (req, res) => {
+    const userId = req.params.userId;
+    const { achievement } = req.body;
+
+    if (!achievement) {
+        return res.status(400).json({
+            message: "Achievement is required"
+        });
+    }
+
+    if (!wallets[userId]) {
+        wallets[userId] = {
+            userId: Number(userId),
+            points: 0,
+            achievements: []
+        };
+    }
+
+    wallets[userId].achievements.push(achievement);
+
+    res.json(wallets[userId]);
+});
+
+module.exports = router;
+
+Frontend
+frontend/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Skill Wallet</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>Skill Wallet</h1>
+
+        <section class="card">
+            <h2>User Profile</h2>
+
+            <p><strong>Name:</strong> <span id="userName">Loading...</span></p>
+            <p><strong>Email:</strong> <span id="userEmail">Loading...</span></p>
+        </section>
+
+        <section class="card">
+            <h2>My Skills</h2>
+
+            <div id="skills">
+                Loading skills...
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Wallet</h2>
+
+            <p>
+                Points:
+                <strong id="points">0</strong>
+            </p>
+
+            <h3>Achievements</h3>
+
+            <ul id="achievements"></ul>
+        </section>
+
+    </div>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
+
+frontend/style.css
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    color: #222;
+}
+
+.container {
+    width: 90%;
+    max-width: 900px;
+    margin: 40px auto;
+}
+
+h1 {
+    text-align: center;
+    color: #2563eb;
+}
+
+.card {
+    background: white;
+    padding: 25px;
+    margin: 20px 0;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.skill {
+    padding: 12px;
+    margin: 10px 0;
+    background: #f1f5f9;
+    border-radius: 8px;
+}
+
+.verified {
+    color: #16a34a;
+    font-weight: bold;
+}
+
+.not-verified {
+    color: #dc2626;
+}
+
+#points {
+    font-size: 28px;
+    color: #2563eb;
+}
+
+frontend/app.js
+const API_URL = "http://localhost:5000/api";
+
+const userId = 1;
+
+async function loadUser() {
+    const response = await fetch(`${API_URL}/users/${userId}`);
+    const user = await response.json();
+
+    document.getElementById("userName").textContent = user.name;
+    document.getElementById("userEmail").textContent = user.email;
+}
+
+async function loadSkills() {
+    const response = await fetch(`${API_URL}/skills/user/${userId}`);
+    const skills = await response.json();
+
+    const skillsContainer = document.getElementById("skills");
+
+    skillsContainer.innerHTML = "";
+
+    skills.forEach(skill => {
+        const div = document.createElement("div");
+
+        div.className = "skill";
+
+        div.innerHTML = `
+            <strong>${skill.name}</strong>
+            <br>
+            Level: ${skill.level}
+            <br>
+            <span class="${skill.verified ? "verified" : "not-verified"}">
+                ${skill.verified ? "✓ Verified" : "Not Verified"}
+            </span>
+        `;
+
+        skillsContainer.appendChild(div);
+    });
+}
+
+async function loadWallet() {
+    const response = await fetch(`${API_URL}/wallet/${userId}`);
+    const wallet = await response.json();
+
+    document.getElementById("points").textContent = wallet.points;
+
+    const achievements =
+        document.getElementById("achievements");
+
+    achievements.innerHTML = "";
+
+    wallet.achievements.forEach(item => {
+        const li = document.createElement("li");
+
+        li.textContent = item;
+
+        achievements.appendChild(li);
+    });
+}
+
+async function loadDashboard() {
+    try {
+        await loadUser();
+        await loadSkills();
+        await loadWallet();
+    } catch (error) {
+        console.error("Error loading dashboard:", error);
+    }
+}
+
+loadDashboard();
+
+GitHub-la upload panna
+Terminal-la project folder open panni:
+
+cd skill-wallet
+
+Backend install:
+
+cd backend
+npm install
+cd ..
+
+Git initialize:
+
+git init
+git add .
+git commit -m "EPIC 2: Develop core functionalities"
+
+GitHub-la skill-wallet repository create pannitu, GitHub kudukkura repository URL-a use panni:
+
+git branch -M main
+git remote add origin YOUR_GITHUB_REPOSITORY_URL
+git push -u origin main
+
+Run panna:
+
+cd backend
+npm start
+
+Then frontend/index.html open pannunga.
+
+EPIC 2-la implement pannirukkura core functionalities
+User profile management
+
+Skill creation
+
+Skill listing
+
+User-specific skill retrieval
+
+Skill verification
+
+Digital wallet
